@@ -23,8 +23,11 @@ M.ui = {
 M.plugins = {
     user = require "custom.plugins",
     override = {
+
         ["nvim-telescope/telescope.nvim"] = pluginConfs.telescope,
         ["kyazdani42/nvim-tree.lua"] = pluginConfs.nvimtree,
+        ["nvim-treesitter/nvim-treesitter"] = pluginConfs.treesitter,
+
     },
     options = {
         lspconfig = {
