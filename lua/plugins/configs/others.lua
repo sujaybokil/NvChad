@@ -6,7 +6,7 @@ M.autopairs = function()
    local present1, autopairs = pcall(require, "nvim-autopairs")
    local present2, cmp = pcall(require, "cmp")
 
-   if not present1 and present2 then
+   if not (present1 and present2) then
       return
    end
 
@@ -48,6 +48,8 @@ M.blankline = function()
       buftype_exclude = { "terminal" },
       show_trailing_blankline_indent = false,
       show_first_indent_level = false,
+      show_current_context = true,
+      show_current_context_start = true,
    }
 
    options = load_override(options, "lukas-reineke/indent-blankline.nvim")
@@ -74,8 +76,6 @@ M.colorizer = function()
          hsl_fn = false, -- CSS hsl() and hsla() functions
          css = false, -- Enable all CSS features: rgb_fn, hsl_fn, names, RGB, RRGGBB
          css_fn = false, -- Enable all CSS *functions*: rgb_fn, hsl_fn
-
-         -- Available modes: foreground, background
          mode = "background", -- Set the display mode.
       },
    }
@@ -113,6 +113,18 @@ M.luasnip = function()
    options = load_override(options, "L3MON4D3/LuaSnip")
    luasnip.config.set_config(options)
    require("luasnip.loaders.from_vscode").lazy_load()
+   require("luasnip.loaders.from_vscode").lazy_load({ paths = vim.g.luasnippets_path or "" })
+
+   vim.api.nvim_create_autocmd("InsertLeave", {
+      callback = function()
+         if
+            require("luasnip").session.current_nodes[vim.api.nvim_get_current_buf()]
+            and not require("luasnip").session.jump_active
+         then
+            require("luasnip").unlink_current()
+         end
+      end,
+   })
 end
 
 M.gitsigns = function()
@@ -146,6 +158,7 @@ M.devicons = function()
 
       local options = { override = require("ui.icons").devicons }
       options = require("core.utils").load_override(options, "kyazdani42/nvim-web-devicons")
+
       devicons.setup(options)
    end
 end

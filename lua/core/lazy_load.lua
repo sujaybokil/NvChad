@@ -1,6 +1,8 @@
--- https://github.com/max397574/omega-nvim/blob/master/lua/omega/modules/ui/bufferline.lua
-local lazy_load = function(tb)
-   vim.api.nvim_create_autocmd(tb.events, {
+local M = {}
+local autocmd = vim.api.nvim_create_autocmd
+
+M.lazy_load = function(tb)
+   autocmd(tb.events, {
       pattern = "*",
       group = vim.api.nvim_create_augroup(tb.augroup_name, {}),
       callback = function()
@@ -21,28 +23,14 @@ local lazy_load = function(tb)
    })
 end
 
-local M = {}
-
-M.bufferline = function()
-   lazy_load {
-      events = { "BufNewFile", "BufAdd", "TabEnter" },
-      augroup_name = "BufferLineLazy",
-      plugins = "bufferline.nvim",
-
-      condition = function()
-         return #vim.fn.getbufinfo { buflisted = 1 } >= 2
-      end,
-   }
-end
-
 M.colorizer = function()
-   lazy_load {
+   M.lazy_load {
       events = { "BufRead", "BufNewFile" },
       augroup_name = "ColorizerLazy",
       plugins = "nvim-colorizer.lua",
 
       condition = function()
-         local items = { "#", "rgb", "hsl" }
+         local items = { "#", "rgb", "hsl", "rgba", "hsla" }
 
          for _, val in ipairs(items) do
             if vim.fn.search(val) ~= 0 then
@@ -54,15 +42,14 @@ M.colorizer = function()
 end
 
 -- load certain plugins only when there's a file opened in the buffer
--- if "nvim-file" is executed -> load the plugin after nvim gui loads
+-- if "nvim filename" is executed -> load the plugin after nvim gui loads
 -- This gives an instant preview of nvim with the file opened
 
-M.on_file_open = function()
-   lazy_load {
+M.on_file_open = function(plugin_name)
+   M.lazy_load {
       events = { "BufRead", "BufWinEnter", "BufNewFile" },
-      augroup_name = "BeLazyOnFileOpen",
-      plugins = "nvim-lsp-installer indent-blankline.nvim",
-
+      augroup_name = "BeLazyOnFileOpen" .. plugin_name,
+      plugins = plugin_name,
       condition = function()
          local file = vim.fn.expand "%"
          return file ~= "NvimTree_1" and file ~= "[packer]" and file ~= ""
@@ -70,22 +57,34 @@ M.on_file_open = function()
    }
 end
 
-M.treesitter = function()
-   lazy_load {
-      events = { "BufRead", "BufWinEnter", "BufNewFile" },
-      augroup_name = "Treesitter_lazy",
-      plugins = "nvim-treesitter",
+-- lspinstaller & lspconfig cmds for lazyloading
+M.lsp_cmds = {
+   "LspInfo",
+   "LspStart",
+   "LspRestart",
+   "LspStop",
+   "LspInstall",
+   "LspUnInstall",
+   "LspUnInstallAll",
+   "LspInstall",
+   "LspInstallInfo",
+   "LspInstallLog",
+   "LspLog",
+   "LspPrintInstalled",
+}
 
-      condition = function()
-         local file = vim.fn.expand "%"
-         return file ~= "NvimTree_1" and file ~= "[packer]" and file ~= ""
-      end,
-   }
-end
+M.treesitter_cmds = {
+   "TSInstall",
+   "TSBufEnable",
+   "TSBufDisable",
+   "TSEnable",
+   "TSDisable",
+   "TSModuleInfo",
+}
 
 M.gitsigns = function()
    -- taken from https://github.com/max397574
-   vim.api.nvim_create_autocmd({ "BufAdd", "VimEnter" }, {
+   autocmd({ "BufRead" }, {
       callback = function()
          local function onexit(code, _)
             if code == 0 then
@@ -100,9 +99,23 @@ M.gitsigns = function()
                args = {
                   "ls-files",
                   "--error-unmatch",
-                  vim.fn.expand "%",
+                  vim.fn.expand "%:p:h",
                },
             }, onexit)
+         end
+      end,
+   })
+end
+
+M.tabufline = function()
+   autocmd({ "BufNewFile", "BufRead", "TabEnter" }, {
+      pattern = "*",
+      group = vim.api.nvim_create_augroup("TabuflineLazyLoad", {}),
+      callback = function()
+         if #vim.fn.getbufinfo { buflisted = 1 } >= 2 then
+            vim.opt.showtabline = 2
+            vim.opt.tabline = "%!v:lua.require'ui.tabline'.run()"
+            vim.api.nvim_del_augroup_by_name "TabuflineLazyLoad"
          end
       end,
    })
